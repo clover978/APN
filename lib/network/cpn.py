@@ -57,10 +57,10 @@ class CPNet(nn.Module):
         self.layer4 = self._make_layer(512, num_blocks[3], stride=2)
         self.avgpool = nn.AvgPool2d(7)
 
-        self.lateral1 = nn.Conv2d(2048, 256, kernel_size=1, stride=1, padding=0)
-        self.lateral2 = nn.Conv2d(1024, 256, kernel_size=1, stride=1, padding=0)
-        self.lateral3 = nn.Conv2d( 512, 256, kernel_size=1, stride=1, padding=0)
-        self.lateral4 = nn.Conv2d( 256, 256, kernel_size=1, stride=1, padding=0)
+        self.lateral1 = self._make_lateral(input_size=2048)
+        self.lateral2 = self._make_lateral(input_size=1024)
+        self.lateral3 = self._make_lateral(input_size=512)
+        self.lateral4 = self._make_lateral(input_size=256)
 
         self.smooth1 = nn.Conv2d(256, 256, kernel_size=1, stride=1, padding=0)
         self.smooth2 = nn.Conv2d(256, 256, kernel_size=1, stride=1, padding=0)
@@ -84,9 +84,19 @@ class CPNet(nn.Module):
             self.in_planes = planes * Bottleneck.expansion
         return nn.Sequential(*layers)
 
+    def _make_lateral(self, input_size):
+        layers = []
+        layers.append(nn.Conv2d(input_size, 256,
+            kernel_size=1, stride=1, bias=False))
+        layers.append(nn.BatchNorm2d(256))
+        layers.append(nn.ReLU(inplace=True))
+
+        return nn.Sequential(*layers)
+
     def _make_global(self, scale_factor):
         return nn.Sequential(
             nn.Conv2d(256, 256, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(256),
             nn.ReLU(True),
             nn.Upsample(scale_factor=scale_factor, mode='bilinear', align_corners=False),
             nn.AvgPool2d(7)
@@ -94,7 +104,7 @@ class CPNet(nn.Module):
 
     def _upsample_smooth_add(self, x, smooth, y):
         up = F.upsample(x, scale_factor=2, mode='bilinear', align_corners=False)
-        return smooth(up) + F.relu(y)
+        return smooth(up) + y
 
     def forward(self, x):
         # Top-down
