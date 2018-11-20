@@ -71,18 +71,10 @@ class CPNet(nn.Module):
         self.global3 = self._make_global(scale_factor=0.25)
         self.global4 = self._make_global(scale_factor=0.125)
 
-        self.refine1 = self._make_refine(num_blocks=3, scale_factor=0.125)
-        self.refine2 = self._make_refine(num_blocks=2, scale_factor=0.25)
-        self.refine3 = self._make_refine(num_blocks=1, scale_factor=0.5)
-        self.refine4 = nn.Sequential(
-            Bottleneck(4*256, 128, 4*256),
-            nn.AvgPool2d(7)
-        )
-        
-        self.drop = nn.Dropout(p=dropout)
+        self.drop1 = nn.Dropout(p=dropout)
+        self.drop2 = nn.Dropout(p=dropout)
         self.fc1 = nn.Linear(2048, num_classes)
         self.fc2 = nn.Linear(1024, num_classes)
-        self.fc3 = nn.Linear(1024, num_classes)
 
     def _make_layer(self, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -99,13 +91,6 @@ class CPNet(nn.Module):
             nn.Upsample(scale_factor=scale_factor, mode='bilinear', align_corners=False),
             nn.AvgPool2d(7)
         )
-
-    def _make_refine(self, num_blocks, scale_factor):
-        layers = []
-        for i in range(num_blocks):
-            layers.append(Bottleneck(256,128,256))
-        layers.append(nn.Upsample(scale_factor=scale_factor, mode='bilinear', align_corners=False))
-        return nn.Sequential(*layers)
 
     def _upsample_smooth_add(self, x, smooth, y):
         up = F.upsample(x, scale_factor=2, mode='bilinear', align_corners=False)
@@ -131,25 +116,15 @@ class CPNet(nn.Module):
         g3 = self.global3(p3)
         g2 = self.global4(p2)
         g = torch.cat([g5,g4,g3,g2], 1)
-        # RefineNet
-        r2 = self.refine1(p2)
-        r3 = self.refine2(p3)
-        r4 = self.refine3(p4)
-        r5 = p5
-        r = torch.cat([r5,r4,r3,r2], 1)
-        r = self.refine4(r)
         
         c = c.view(c.size(0), -1)
         g = g.view(g.size(0), -1)
-        r = r.view(r.size(0), -1)
         if self.dropout > 0:
-            c = self.drop(c)
-            g = self.drop(g)
-            r = self.drop(r)
+            c = self.drop1(c)
+            g = self.drop2(g)
         c = self.fc1(c)
         g = self.fc2(g)
-        r = self.fc3(r)
-        return c, g, r
+        return c, g
 
 
 def CPNet50(pretrained=False, **kargs):

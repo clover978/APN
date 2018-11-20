@@ -188,10 +188,11 @@ def train(train_loader, model, criterion, optimizer, epoch):
 
         # compute output
         output = model(input)
-        loss = criterion(output[0], target) + criterion(output[1], target) + criterion(output[2], target)
+        loss = criterion(output[0], target) \
+               + criterion(output[1], target)
 
         # measure accuracy and record loss
-        prec1, prec5 = accuracy(output[0]+output[1]+output[2], target, topk=(1, 5))
+        prec1, prec5 = accuracy(output[0]+output[1], target, topk=(1, 5))
         losses.update(loss.item(), input.size(0))
         top1.update(prec1[0], input.size(0))
         top5.update(prec5[0], input.size(0))
@@ -234,10 +235,11 @@ def validate(val_loader, model, criterion):
 
             # compute output
             output = model(input)
-            loss = criterion(output[0], target) + criterion(output[1], target) + criterion(output[2], target)
+            loss = criterion(output[0], target) \
+                   + criterion(output[1], target) 
 
             # measure accuracy and record loss
-            prec1, prec5 = accuracy(output[0]+output[1]+output[2], target, topk=(1, 5))
+            prec1, prec5 = accuracy(output[0]+output[1], target, topk=(1, 5))
             losses.update(loss.item(), input.size(0))
             top1.update(prec1[0], input.size(0))
             top5.update(prec5[0], input.size(0))
